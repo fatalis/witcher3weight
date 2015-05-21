@@ -81,7 +81,7 @@ void* GetScriptFunc(const wchar[] name)
     auto base = cast(byte*)info.lpBaseOfDll;
     auto size = info.SizeOfImage;
 
-    auto nameAddr = FindBytes(cast(byte*)name.ptr, name.sizeof, base, size);
+    auto nameAddr = FindBytes(cast(byte*)name.ptr, name.length*wchar.sizeof, base, size);
     if (!nameAddr)
         return null;
 
