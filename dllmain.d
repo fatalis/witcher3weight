@@ -47,43 +47,45 @@ void InitWrapper()
 
     DebugPrint("dinput8 real: %s", dll);
 
-    void* dinput = LoadLibraryA(dll.ptr);
+    auto dinput = LoadLibraryA(dll.ptr);
     DebugPrint("dinput8 address %X", dinput);
     DirectInput8Create_Real = cast(typeof(DirectInput8Create_Real))GetProcAddress(dinput, "DirectInput8Create");
 }
 
 void PatchCode()
 {
-    void* func = GetScriptFunc("GetItemWeight");
+    auto func = GetScriptFunc("GetItemWeight");
     if (!func)
         return;
 
     // .text:00007FF6B4245A6C F3 0F 11 06    movss   dword ptr [rsi], xmm0
-    byte[] instr = [cast(byte)0xf3, cast(byte)0x0f, cast(byte)0x11, cast(byte)0x06];
+    byte[] instr = [cast(byte)0xf3, cast(byte)0x0f, cast(byte)0x11, cast(byte)0x06]; // figure out why these nasty casts are needed
     auto instrAddr = FindBytes(instr.ptr, instr.length, cast(byte*)func, 128);
     if (!instrAddr)
         return;
     
     DebugPrint("instrAddr %X", instrAddr);
+    // xor eax ,eax
+    // mov dword ptr [rsi], eax
     memcpy_protected(instrAddr, "\x31\xc0\x89".ptr, 3);
 }
 
 void* GetScriptFunc(const wchar[] name)
 {
-    void* mod = GetModuleHandleA(null);
+    auto mod = GetModuleHandleA(null);
 
     MODULEINFO info;
     if (!GetModuleInformation(GetCurrentProcess(), mod, &info, info.sizeof))
         return null;
 
-    void* base = info.lpBaseOfDll;
-    size_t size = info.SizeOfImage;
+    auto base = cast(byte*)info.lpBaseOfDll;
+    auto size = info.SizeOfImage;
 
-    void* nameAddr = FindBytes(cast(byte*)name.ptr, name.sizeof, cast(byte*)base, size);
+    auto nameAddr = FindBytes(cast(byte*)name.ptr, name.sizeof, base, size);
     if (!nameAddr)
         return null;
 
-    void* leaAddr = FindLEARDXForAddr(nameAddr, cast(byte*)base, size);
+    auto leaAddr = FindLEARDXForAddr(nameAddr, base, size);
     if (!leaAddr)
         return null;
 
@@ -93,10 +95,8 @@ void* GetScriptFunc(const wchar[] name)
     if (!lea2Addr)
         return null;
 
-    uint offset = *cast(uint*)(lea2Addr+3);
+    auto offset = *cast(int*)(lea2Addr+3);
     auto funcAddr = lea2Addr + 7 + offset;
-
-    funcAddr -= 0x100000000; // is this due to reloc? test this and make sure it works all the time
 
     return funcAddr;
 }
@@ -105,10 +105,10 @@ void* GetScriptFunc(const wchar[] name)
 void* FindLEARDXForAddr(void* addr, byte* mem, size_t size)
 {
     byte[] lea = [cast(byte)0x48, cast(byte)0x8D, cast(byte)0x15];
-    foreach (void* i; FindAllBytes(lea, mem, size))
+    foreach (byte* i; FindAllBytes(lea, mem, size))
     {
-        uint encodedAddr = cast(uint)(addr - (i + 7));
-        if (*cast(uint*)(i+3) == encodedAddr)
+        auto encodedAddr = cast(int)(addr - (i + 7));
+        if (*cast(int*)(i+3) == encodedAddr)
             return i;
     }
 
@@ -117,7 +117,7 @@ void* FindLEARDXForAddr(void* addr, byte* mem, size_t size)
 
 void* FindBytes(byte* search, size_t size, byte* mem, size_t len)
 {
-    for (byte* ptr = mem; ptr < mem + len - size; ptr++)
+    for (auto ptr = mem; ptr < mem + len - size; ptr++)
     {
         if (memcmp(ptr, search, size) == 0)
         {
@@ -130,7 +130,7 @@ void* FindBytes(byte* search, size_t size, byte* mem, size_t len)
 
 void* FindBytesReverse(byte* search, size_t size, byte* mem, size_t len)
 {
-    for (byte* ptr = mem-size; ptr >= mem-len; ptr--)
+    for (auto ptr = mem-size; ptr >= mem-len; ptr--)
     {
         if (memcmp(ptr, search, size) == 0)
         {
@@ -145,7 +145,7 @@ byte*[] FindAllBytes(const byte[] search, byte* mem, size_t len)
 {
     byte*[] ret;
     
-    for (byte* ptr = mem; ptr < mem + len - search.length; ptr++)
+    for (auto ptr = mem; ptr < mem + len - search.length; ptr++)
     {
         if (memcmp(ptr, search.ptr, search.length) == 0)
         {
