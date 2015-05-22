@@ -4,7 +4,6 @@ import std.c.windows.windows;
 import core.sys.windows.dll;
 import std.string;
 import std.c.string: memcmp, memcpy, strcat;
-import core.stdc.wchar_: wcsncmp;
 import std.conv: to;
 
 import wrapper: DirectInput8Create_Real;
@@ -123,12 +122,12 @@ void GetItemWeight_Hook(void* a1, void* a2, float* weight)
 extern(C++)
 void GetItemWeight_Gate(void* a1, void* a2, float* weight)
 {
-	asm {
-		naked;
+    asm {
+        naked;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
         nop; nop; nop;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
-	}
+    }
 }
 
 debug {
@@ -146,12 +145,12 @@ void GetItemMaxDurability_Hook(void* a1, void* a2, float* durability)
 extern(C++)
 void GetItemMaxDurability_Gate(void* a1, void* a2, float* durability)
 {
-	asm {
-		naked;
+    asm {
+        naked;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
         nop; nop; nop;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
-	}
+    }
 }
 
 extern(C++)
@@ -168,12 +167,12 @@ void GetItemInitialDurability_Hook(void* a1, void* a2, float* durability)
 extern(C++)
 void GetItemInitialDurability_Gate(void* a1, void* a2, float* durability)
 {
-	asm {
-		naked;
+    asm {
+        naked;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
         nop; nop; nop;
         nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;nop;
-	}
+    }
 }
 }
 
@@ -275,34 +274,34 @@ void DebugPrint(Char, Args...)(Char[] fmt, Args args)
 
 void WriteJMP(ubyte* src, ubyte* dest, int nops)
 {
-	uint oldProtect;
-	if (VirtualProtect(src, JMP_SIZE+nops, PAGE_EXECUTE_READWRITE, &oldProtect))
-	{
+    uint oldProtect;
+    if (VirtualProtect(src, JMP_SIZE+nops, PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
         *(src) = 0x48; // mov rax immediate
         *(src+1) = 0xb8;
         *cast(void**)(src+2) = dest;
         *(src+10) = 0xff; // jmp rax
         *(src+11) = 0xe0;
 
-		for (int i = 0; i < nops; i++)
-			*(src + JMP_SIZE + i) = 0x90;
+        for (int i = 0; i < nops; i++)
+            *(src + JMP_SIZE + i) = 0x90;
 
-		VirtualProtect(src, JMP_SIZE+nops, oldProtect, &oldProtect);
-	}
+        VirtualProtect(src, JMP_SIZE+nops, oldProtect, &oldProtect);
+    }
 }
 
 void InstallTrampoline(ubyte* src, ubyte* dest, ubyte* gate, int overwritten)
 {
-	uint oldProtect;
-	if (VirtualProtect(gate, overwritten, PAGE_EXECUTE_READWRITE, &oldProtect))
-	{
-		memcpy(gate, src, overwritten);
-		//gate[0..overwritten-1] = src[0..overwritten-1];
-		VirtualProtect(gate, overwritten, oldProtect, &oldProtect);
-	}
+    uint oldProtect;
+    if (VirtualProtect(gate, overwritten, PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
+        memcpy(gate, src, overwritten);
+        //gate[0..overwritten-1] = src[0..overwritten-1];
+        VirtualProtect(gate, overwritten, oldProtect, &oldProtect);
+    }
 
-	WriteJMP(gate+overwritten, src+overwritten, 0);
-	WriteJMP(src, dest, (overwritten > JMP_SIZE ? overwritten - JMP_SIZE : 0));
+    WriteJMP(gate+overwritten, src+overwritten, 0);
+    WriteJMP(src, dest, (overwritten > JMP_SIZE ? overwritten - JMP_SIZE : 0));
 }
 
 bool memcpy_protected(void* dest, in void* src, size_t size)
